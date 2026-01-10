@@ -1,35 +1,34 @@
-import { defineConfig } from 'vitest/config';
-import { comlink } from "vite-plugin-comlink";
-import react from '@vitejs/plugin-react';
+import { defineConfig } from "vite";
+import { viteStaticCopy } from "vite-plugin-static-copy";
+import * as path from "path";
 
-// https://vite.dev/config/
 export default defineConfig({
-  plugins: [comlink(), react()],
-  worker: {
-    plugins: () => [comlink()],
-    format: 'es',
-  },
-  test: {
-    exclude: ['**/node_modules/**', '**/dist/**', 'tests/**'],
-  },
-  // For javadoc API during development
-  server: {
-    proxy: {
-      '/v1': {
-        target: 'http://localhost:8080',
-        changeOrigin: true,
-        secure: false,
-      },
-    },
-  },
-  build: {
-    sourcemap: true,
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          'inheritance': ['@xyflow/react', 'dagre'],
+    build: {
+        lib: {
+            entry: "./src/extension.ts",
+            formats: ["cjs"],
+            fileName: (_format, name) => `mcsrc/dist/web/${name}.js`,
         },
-      },
+        rollupOptions: {
+            external: ["vscode"],
+        },
+        sourcemap: true,
     },
-  },
+    plugins: [
+        viteStaticCopy({
+            targets: [
+                {
+                    src: path.resolve(__dirname, './package.json'),
+                    dest: './mcsrc',
+                },
+                {
+                    src: path.resolve(__dirname, './node_modules/vscode-web/dist') + '/[!.]*',
+                    dest: './vscode-web',
+                }
+            ],
+            watch: {
+                reloadPageOnChange: true
+            }
+        }),
+    ]
 });

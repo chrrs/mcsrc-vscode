@@ -1,0 +1,15 @@
+{
+    "productConfiguration": {
+        "nameShort": "mcsrc",
+        "nameLong": "mcsrc",
+        "applicationName": "mcsrc",
+        "dataFolderName": ".mcsrc",
+        "version": "1.91.1"
+    },
+    "additionalBuiltinExtensions": [
+        {
+            "scheme": "http",
+            "path": "/mcsrc"
+        }
+    ]
+}

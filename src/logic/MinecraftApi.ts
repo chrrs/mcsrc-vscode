@@ -1,16 +1,13 @@
-import { BehaviorSubject, combineLatest, distinctUntilChanged, filter, from, map, shareReplay, switchMap, tap, Observable } from "rxjs";
-import { agreedEula } from "./Settings";
-import { state, updateSelectedMinecraftVersion } from "./State";
 import { openJar, streamJar, type Jar } from "../utils/Jar";
 
 const CACHE_NAME = 'mcsrc-v1';
 const VERSIONS_URL = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json";
 
-interface VersionsList {
+export interface VersionsList {
     versions: VersionListEntry[];
 }
 
-interface VersionListEntry {
+export interface VersionListEntry {
     id: string;
     type: string;
     url: string;
@@ -34,25 +31,36 @@ export interface MinecraftJar {
     jar: Jar;
 }
 
-export const minecraftVersions = new BehaviorSubject<VersionListEntry[]>([]);
-export const minecraftVersionIds = minecraftVersions.pipe(
-    map(versions => versions.map(v => v.id))
-);
-export const selectedMinecraftVersion = new BehaviorSubject<string | null>(null);
+export type ProgressCallback = (n: number) => void;
 
-export const downloadProgress = new BehaviorSubject<number | undefined>(undefined);
+let minecraftVersions: VersionListEntry[] | undefined = undefined;
+export async function getMinecraftVersions(): Promise<VersionListEntry[]> {
+    if (minecraftVersions)
+        return minecraftVersions;
 
-export const minecraftJar = minecraftJarPipeline(selectedMinecraftVersion);
-export function minecraftJarPipeline(source$: Observable<string | null>): Observable<MinecraftJar> {
-    return source$.pipe(
-        filter(id => id !== null),
-        distinctUntilChanged(),
-        tap(version => updateSelectedMinecraftVersion()),
-        map(version => getVersionEntryById(version!)!),
-        tap((version) => console.log(`Opening Minecraft jar ${version.id}`)),
-        switchMap(version => from(downloadMinecraftJar(version, downloadProgress))),
-        shareReplay({ bufferSize: 1, refCount: false })
-    );
+    minecraftVersions = (await fetchVersions()).versions;
+    return minecraftVersions;
+}
+
+export async function getDefinedClasses(versionId: string): Promise<string[]> {
+    const jar = await getMinecraftJar(versionId);
+    return Object.keys(jar.jar.entries)
+        .filter(it => it.endsWith(".class") && !it.includes('$'))
+        .map(it => it.replace(".class", ""));
+}
+
+const jarCache: Record<string, MinecraftJar> = {};
+export async function getMinecraftJar(versionId: string, progress: ProgressCallback = () => { }): Promise<MinecraftJar> {
+    if (versionId in jarCache)
+        return jarCache[versionId];
+
+    const entry = await getVersionEntryById(versionId);
+    if (!entry)
+        throw new Error(`Unknown Minecraft version: ${versionId}`);
+    const jar = await downloadMinecraftJar(entry, progress);
+
+    jarCache[versionId] = jar;
+    return jar;
 }
 
 async function getJson<T>(url: string): Promise<T> {
@@ -86,13 +94,12 @@ async function fetchVersionManifest(version: VersionListEntry): Promise<VersionM
     return getJson<VersionManifest>(version.url);
 }
 
-function getVersionEntryById(id: string): VersionListEntry | undefined {
-    const versions = minecraftVersions.value;
-    return versions.find(v => v.id === id);
+async function getVersionEntryById(id: string): Promise<VersionListEntry | undefined> {
+    return (await getMinecraftVersions()).find(v => v.id === id);
 }
 
 async function cachedFetch(url: string): Promise<Response> {
-    if (!('caches' in window)) {
+    if (caches === undefined) {
         return fetch(url);
     }
 
@@ -109,7 +116,7 @@ async function cachedFetch(url: string): Promise<Response> {
     return response;
 }
 
-async function downloadMinecraftJar(version: VersionListEntry, progress: BehaviorSubject<number | undefined>): Promise<MinecraftJar> {
+async function downloadMinecraftJar(version: VersionListEntry, progress: ProgressCallback): Promise<MinecraftJar> {
     console.log(`Downloading Minecraft jar for version: ${version.id}`);
     const versionManifest = await fetchVersionManifest(version);
     const response = await cachedFetch(versionManifest.downloads.client.url);
@@ -123,7 +130,7 @@ async function downloadMinecraftJar(version: VersionListEntry, progress: Behavio
     if (!response.body || total === 0) {
         const blob = await response.blob();
         const jar = await openJar(blob);
-        progress.next(undefined);
+        progress(0);
         return { version: version.id, jar };
     }
 
@@ -139,12 +146,12 @@ async function downloadMinecraftJar(version: VersionListEntry, progress: Behavio
         receivedLength += value.length;
 
         const percent = Math.round((receivedLength / total) * 100);
-        progress.next(percent);
+        progress(percent);
     }
 
     const blob = new Blob(chunks);
     const jar = await openJar(blob);
-    progress.next(undefined);
+    progress(1);
     return { version: version.id, jar };
 }
 
@@ -154,24 +161,6 @@ async function streamMinecraftJar(version: VersionListEntry): Promise<MinecraftJ
     const jar = await streamJar(versionManifest.downloads.client.url);
     return { version: version.id, jar };
 }
-
-async function initialize(version: string | null = null) {
-    const versions = (await fetchVersions()).versions;
-    minecraftVersions.next(versions);
-
-    // This triggers the download
-    selectedMinecraftVersion.next(version || versions[0].id);
-}
-
-let hasInitialized = false;
-
-// Automatically download the Minecraft jar only when the user has agreed to the EULA
-combineLatest([agreedEula.observable, state]).subscribe(([agreed, currentState]) => {
-    if (agreed && !hasInitialized) {
-        hasInitialized = true;
-        initialize(currentState.minecraftVersion);
-    }
-});
 
 // Hardcode as these are never going to change.
 const EXPERIMENTAL_VERSIONS: VersionsList = {

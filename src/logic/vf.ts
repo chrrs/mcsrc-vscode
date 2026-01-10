@@ -30,6 +30,7 @@ export const decompile = async (name: string, options: Config) => {
             decompileFunc = exports.decompile;
         } catch (e) {
             console.warn("Failed to load WASM module (non-compliant browser?), falling back to JS implementation", e);
+            // @ts-expect-error
             const { decompile: decompileJS } = await import("@run-slicer/vf/vf.runtime.js");
             decompileFunc = decompileJS;
         }

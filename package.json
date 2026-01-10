@@ -1,42 +1,64 @@
 {
-  "name": "mcsrc",
-  "private": true,
-  "version": "0.0.0",
-  "type": "module",
-  "scripts": {
-    "dev": "vite",
-    "dev:javadoc": "vite --mode javadoc",
-    "build": "tsc -b && vite build",
-    "build:javadoc": "tsc -b && vite build --mode javadoc",
-    "preview": "vite preview",
-    "test": "vitest run",
-    "test:e2e": "playwright test",
-    "test:e2e:ui": "playwright test --ui",
-    "test:e2e:debug": "playwright test --debug"
-  },
-  "dependencies": {
-    "@katana-project/zip": "^0.7.1",
-    "@monaco-editor/react": "^4.7.0",
-    "@run-slicer/vf": "^0.3.2-1.11.2",
-    "@types/dagre": "^0.7.53",
-    "@xyflow/react": "^12.10.0",
-    "antd": "^5.28.0",
-    "comlink": "^4.4.2",
-    "dagre": "^0.8.5",
-    "react": "^19.1.1",
-    "react-dom": "^19.1.1",
-    "rxjs": "^7.8.2"
-  },
-  "devDependencies": {
-    "@playwright/test": "^1.57.0",
-    "@types/node": "^24.6.0",
-    "@types/react": "^19.1.16",
-    "@types/react-dom": "^19.1.9",
-    "@vitejs/plugin-react": "^5.0.4",
-    "globals": "^16.4.0",
-    "typescript": "~5.9.3",
-    "vite": "^7.1.7",
-    "vite-plugin-comlink": "^5.3.0",
-    "vitest": "^4.0.15"
-  }
+    "name": "mcsrc-vscode-extension",
+    "displayName": "mcsrc",
+    "description": "Preview Minecraft decompiled classes via mcsrc:// scheme.",
+    "version": "0.0.1",
+    "private": true,
+    "publisher": "mcsrc",
+    "engines": {
+        "vscode": "^1.90.0"
+    },
+    "categories": [
+        "Other"
+    ],
+    "activationEvents": [
+        "onUri:mcsrc"
+    ],
+    "browser": "./dist/web/extension",
+    "contributes": {
+        "commands": [
+            {
+                "command": "mcsrc.changeVersion",
+                "title": "Set Minecraft Version",
+                "category": "MCSRC"
+            }
+        ],
+        "views": {
+            "explorer": [
+                {
+                    "id": "mcsrc.classes",
+                    "name": "Minecraft Classes"
+                }
+            ]
+        },
+        "menus": {
+            "view/title": [
+                {
+                    "command": "mcsrc.changeVersion",
+                    "when": "view == mcsrc.classes",
+                    "group": "navigation"
+                }
+            ]
+        }
+    },
+    "scripts": {
+        "build": "vite build",
+        "preview": "vite preview"
+    },
+    "devDependencies": {
+        "@types/node": "^24.6.0",
+        "@types/vscode": "^1.90.0",
+        "@vscode/test-web": "^0.0.78",
+        "npm-run-all": "^4.1.5",
+        "typescript": "~5.9.3",
+        "vite": "^6.0.0",
+        "vite-plugin-static-copy": "^3.1.4"
+    },
+    "dependencies": {
+        "@katana-project/zip": "^0.7.1",
+        "@run-slicer/vf": "^0.3.2-1.11.2",
+        "rxjs": "^7.8.2",
+        "vitest": "^3.2.4",
+        "vscode-web": "^1.91.1"
+    }
 }
