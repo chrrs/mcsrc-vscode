@@ -3,6 +3,7 @@ import { getMinecraftJar } from "./MinecraftApi";
 import { decompile, type Options, type TokenCollector } from "./vf";
 import type { Jar } from "../utils/Jar";
 import type { Token } from "./Tokens";
+import { BehaviorSubject } from "rxjs";
 // import { getBytecode } from "../workers/UsageIndex";
 
 export interface DecompileResult {
@@ -13,6 +14,9 @@ export interface DecompileResult {
 }
 
 const DECOMPILER_OPTIONS: Options = {};
+
+const decompilerCounter = new BehaviorSubject<number>(0);
+export const decompilingCount$ = decompilerCounter.asObservable();
 
 const decompilationCache = new Map<string, DecompileResult>();
 export async function getDecompileResult(versionId: string, className: string) {
@@ -67,6 +71,8 @@ async function decompileClass(className: string, jar: Jar, options: Options): Pr
     const files = Object.keys(jar.entries);
 
     try {
+        decompilerCounter.next(decompilerCounter.value + 1);
+
         const tokens: Token[] = [];
         const source = await decompile(className, {
             source: async (name: string) => {
@@ -91,6 +97,8 @@ async function decompileClass(className: string, jar: Jar, options: Options): Pr
     } catch (e) {
         console.error(`Error during decompilation of class '${className}':`, e);
         return { className, source: `// Error during decompilation: ${(e as Error).message}`, tokens: [], language: "java" };
+    } finally {
+        decompilerCounter.next(decompilerCounter.value - 1);
     }
 }
 

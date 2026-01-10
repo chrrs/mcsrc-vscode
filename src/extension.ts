@@ -2,6 +2,7 @@ import * as vscode from "vscode";
 import { DecompiledFSProvider, FSSearchProvider } from "./ext/FileProviders";
 import { DecompiledDefinitionProvider, DecompiledHoverProvider, DecompiledSemanticTokensProvider, tokenLegend } from "./ext/TokenProviders";
 import { getMinecraftVersions, type VersionListEntry } from "./logic/MinecraftApi";
+import { decompilingCount$ } from "./logic/Decompiler";
 
 // Some resources on deploying vscode-web:
 // https://gist.github.com/progrium/76fac3c76f12e0875469629ec703aab9
@@ -56,6 +57,18 @@ export function activate(context: vscode.ExtensionContext): void {
 
     const searchProvider = new FSSearchProvider();
     context.subscriptions.push(vscode.workspace.registerFileSearchProvider("mcsrc", searchProvider));
+
+    const decompileStatus = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 1);
+    const decompileStatusSub = decompilingCount$.subscribe(count => {
+        if (count > 0) {
+            const noun = count === 1 ? "class" : "classes";
+            decompileStatus.text = `$(sync~spin) Decompiling ${count} ${noun}`;
+            decompileStatus.show();
+        } else {
+            decompileStatus.hide();
+        }
+    });
+    context.subscriptions.push(decompileStatus, { dispose: () => decompileStatusSub.unsubscribe() });
 
     const versionProvider = new VersionTreeDataProvider();
     const versionTreeView = vscode.window.createTreeView("mcsrc.version", {
