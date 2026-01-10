@@ -21,7 +21,10 @@ export async function getDecompileResult(versionId: string, className: string) {
     const fileName = className + ".class";
     if (!(fileName in jar.jar.entries)) {
         console.error(`Class not found in Minecraft jar: ${className}`);
-        return { className, source: `// Class not found: ${className}`, tokens: [], language: "java" };
+        return {
+            className, source: `// Class not found: ${className}`,
+            tokens: [], language: "java"
+        } satisfies DecompileResult;
     }
 
     // if (bytecode) {

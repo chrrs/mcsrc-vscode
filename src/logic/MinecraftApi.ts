@@ -33,32 +33,38 @@ export interface MinecraftJar {
 
 export type ProgressCallback = (n: number) => void;
 
-let minecraftVersions: VersionListEntry[] | undefined = undefined;
+let minecraftVersions: Promise<VersionListEntry[]> | null = null;
 export async function getMinecraftVersions(): Promise<VersionListEntry[]> {
-    if (minecraftVersions)
+    if (minecraftVersions !== null)
         return minecraftVersions;
 
-    minecraftVersions = (await fetchVersions()).versions;
+    minecraftVersions = fetchVersions().then(it => it.versions);
     return minecraftVersions;
 }
 
+const classesCache: Record<string, string[]> = {};
 export async function getDefinedClasses(versionId: string): Promise<string[]> {
+    if (versionId in classesCache)
+        return classesCache[versionId];
+
     const jar = await getMinecraftJar(versionId);
-    return Object.keys(jar.jar.entries)
+    const classes = Object.keys(jar.jar.entries)
         .filter(it => it.endsWith(".class") && !it.includes('$'))
         .map(it => it.replace(".class", ""));
+    classesCache[versionId] = classes;
+    return classes;
 }
 
-const jarCache: Record<string, MinecraftJar> = {};
+const jarCache: Record<string, Promise<MinecraftJar>> = {};
 export async function getMinecraftJar(versionId: string, progress: ProgressCallback = () => { }): Promise<MinecraftJar> {
     if (versionId in jarCache)
         return jarCache[versionId];
 
     const entry = await getVersionEntryById(versionId);
-    if (!entry)
+    if (entry === undefined)
         throw new Error(`Unknown Minecraft version: ${versionId}`);
-    const jar = await downloadMinecraftJar(entry, progress);
 
+    const jar = downloadMinecraftJar(entry, progress);
     jarCache[versionId] = jar;
     return jar;
 }

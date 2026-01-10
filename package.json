@@ -1,5 +1,5 @@
 {
-    "name": "mcsrc-vscode-extension",
+    "name": "mcsrc",
     "displayName": "mcsrc",
     "description": "Preview Minecraft decompiled classes via mcsrc:// scheme.",
     "version": "0.0.1",
@@ -11,8 +11,11 @@
     "categories": [
         "Other"
     ],
+    "enabledApiProposals": [
+        "fileSearchProvider"
+    ],
     "activationEvents": [
-        "onUri:mcsrc"
+        "*"
     ],
     "browser": "./dist/web/extension",
     "contributes": {
@@ -26,17 +29,9 @@
         "views": {
             "explorer": [
                 {
-                    "id": "mcsrc.classes",
-                    "name": "Minecraft Classes"
-                }
-            ]
-        },
-        "menus": {
-            "view/title": [
-                {
-                    "command": "mcsrc.changeVersion",
-                    "when": "view == mcsrc.classes",
-                    "group": "navigation"
+                    "id": "mcsrc.version",
+                    "name": "Minecraft",
+                    "initialSize": 1
                 }
             ]
         }
